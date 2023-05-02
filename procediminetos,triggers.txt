@@ -1,0 +1,895 @@
+PROYECTO 2 BASES
+-------------------------------------------------------------------------------------
+
+
+FUNCIONES
+
+Validar que el numero sea positivo
+
+create function entero_positivo(numero integer)
+    return varchar2
+is
+    respuesta varchar2(20);
+begin
+    respuesta:='';
+    if(numero>=0) then
+        respuesta:='true';
+    else 
+        respuesta:='false';
+    end if;
+    return respuesta;
+end;
+
+----------------------------------------------------------------------------
+
+Validar que el correo sea un formato valido (1=valido, 0=invalido)
+
+CREATE  FUNCTION EMAILVALIDATE_V1(email VARCHAR2) 
+RETURN NUMBER 
+IS
+t_valid NUMBER(1);
+t_totallen NUMBER(2);
+t_counter NUMBER(2):=0;
+t_atpos NUMBER(2):= 1;
+i NUMBER(2) := 1;
+t_pointpos NUMBER(2):= 1;
+mail_ch VARCHAR2(1);
+
+BEGIN
+
+t_totallen := LENGTH(email);
+t_counter := t_totallen;
+i := 1;
+t_valid := 1;
+
+
+-- Validamos la longitud del correo, no puede ser vacío 
+IF LENGTH(ltrim(rtrim(email))) = 0 THEN
+t_valid := 0;
+ELSE
+-------------------------------------- 
+
+--Valida que no contenga caracteres inválidos en un correo
+t_counter := t_totallen;
+
+WHILE t_counter > 0
+LOOP
+mail_ch := substr(email,i,1);
+i := i+1;
+t_counter := t_counter -1;
+
+IF mail_ch IN (
+' ','!','#','$','%',
+'^','&','*','(',')',
+'-','','"',
+'+','|','{','}','[',
+']',':','>','<','?',
+'/','','=') THEN
+t_valid := 0;
+EXIT;
+END IF;
+
+END LOOP;
+---------------------------------------
+
+--Valida que no tenga mas de un @
+t_atpos := instr(email,'@',1,2) ;
+
+IF t_atpos > 1 then
+t_valid := 0;
+END IF;
+---------------------------------------
+
+--Valida que contenga solo un @
+t_atpos := instr(email,'@',1);
+
+IF t_atpos IN (0,1) THEN
+t_valid := 0;
+END IF;
+---------------------------------------
+
+--Validamos que tenga por lo menos un punto (.)
+t_pointpos := instr(email,'.',1) ;
+
+IF t_pointpos IN (0,1) THEN
+t_valid := 0;
+END IF;
+----------------------------------------
+
+END IF;
+
+RETURN t_valid;
+
+END;
+
+
+---------------------------------------------------------------------------
+
+
+
+Validar para orden que exista un restaurante en la misma zona y municipio que la dirección del cliente
+
+
+
+
+-------------------------------------------------------------------------------------------
+
+RegistrarRestaurante
+
+
+create procedure RegistrarRestaurante(id_restaurante in varchar2,direccion in varchar2, municipio in varchar2, zona in integer, telefono in integer, personal in integer, tiene_parqueo in char)
+as
+guardar_parqueo varchar2(4000);
+begin
+    if id_restaurante is null or direccion is null or municipio is null or zona is null or telefono is null or personal is null or tiene_parqueo is null then
+        dbms_output.put_line('No puede tener campos vacios');
+        return;
+    end if;
+    if entero_positivo(zona) = 'false' or (zona in('.')) then
+        dbms_output.put_line('El valor numerico de Zona no puede ser negativo o decimal');
+        return;
+    elsif tiene_parqueo!=0 and tiene_parqueo!=1 then
+        dbms_output.put_line('Parametros invalidos en tiene parqueo');
+        return;
+    end if;
+    if tiene_parqueo=0 then
+        guardar_parqueo:='no';
+    elsif tiene_parqueo=1 then
+        guardar_parqueo:='si';
+    end if;
+    
+    insert into restaurante values(id_restaurante,direccion,municipio,zona,telefono,personal,guardar_parqueo);
+    
+end;
+
+
+
+-------------------------------------------------------------------------------------------------------
+
+CrearEmpleado
+
+
+create procedure CrearEmpleado(nombres in varchar2, apellidos in varchar2, fecha_nacimiento in varchar2, correo in varchar2, telefono in integer, direccion in varchar2, dpi in number, id_puesto_trabajo in integer, fecha_inicio in varchar2, id_restaurante in varchar2)
+as
+begin
+    if nombres is null or apellidos is null or fecha_nacimiento is null or correo is null or telefono is null or direccion is null or dpi is null or id_puesto_trabajo is null or fecha_inicio is null or id_restaurante is null then
+        dbms_output.put_line('No puede tener campos vacios');
+        return;
+    end if;
+    if emailvalidate_v1(correo) = 0 then
+        dbms_output.put_line('Formato de correo invalido');
+        return;
+    end if;
+    
+    insert into empleado values(lpad(para_empleado.nextval, 8, '0') , nombres , apellidos , fecha_nacimiento , correo , telefono , direccion , dpi , id_puesto_trabajo , fecha_inicio , id_restaurante );
+    
+end;
+
+
+execute crearempleado('joseph jeferson','marroquin monroy','12/06/2002','josephgm@ail.com',12345678,'san miguel petapa',785785785,1,'4/21/2023','r1')
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+RegistrarPuesto
+
+
+create procedure RegistrarPuesto(nombre in varchar2,descripcion in varchar2,salario in binary_double)
+as
+begin
+
+    if nombre is null or descripcion is null or salario is null then
+        dbms_output.put_line('No puede tener campos vacios');
+        return;
+    end if;
+    if salario<0 then
+        dbms_output.put_line('El salario no puede ser negativo');
+        return;
+    end if;
+    
+    insert into puesto_trabajo (nombre ,descripcion ,salario) values(nombre ,descripcion ,salario);
+    
+end;
+
+
+execute registrarpuesto('conserje','limpiar todo',300.06)
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+
+RegistrarCliente
+
+
+create procedure RegistrarCliente(dpi_entrada in number,nombre in varchar2 ,apellido in varchar2,fecha_nacimiento in varchar2,correo in varchar2,telefono in integer,nit in integer)
+as
+validar_dpi varchar2(4000);
+begin
+    select count(dpi) from cliente where dpi=dpi_entrada;
+    if dpi_entrada is null or nombre is null or apellido is null or fecha_nacimiento is null or correo is null or telefono is null then
+        dbms_output.put_line('No puede tener campos vacios a exepcion del nit');
+        return;
+    end if;
+    if dpi>0 then
+        dbms_output.put_line('No puede tener dpi duplicados');
+        return;
+    end if;
+    if emailvalidate_v1(correo) = 0 then
+        dbms_output.put_line('Formato de correo invalido');
+        return;
+    end if;
+    
+    insert into cliente values( dpi_entrada,nombre,apellido,fecha_nacimiento,correo,telefono,nit );
+    
+end;
+
+-----------------------------------------------------------------------------------------------------------------------------------
+
+RegistrarDireccion
+
+
+
+
+create procedure RegistrarDireccion(cliente_dpi in number, direccion in varchar2, municipio in varchar2, zona in integer)
+as
+    existe_cliente varchar2(4000);
+begin
+    select count(dpi) into existe_cliente from cliente where dpi=cliente_dpi;
+    if cliente_dpi is null or direccion is null or municipio is null or zona is null then
+        dbms_output.put_line('No puede tener campos vacios');
+        return;
+    end if;
+    if existe_cliente <=0 then
+        dbms_output.put_line('El cliente no existe');
+        return;
+    end if;
+    if entero_positivo(zona) = 'false' or (zona in('.')) then
+        dbms_output.put_line('El valor numerico de Zona no puede ser negativo o decimal');
+        return;
+    end if;
+
+    
+    insert into direcciones (cliente_dpi, direccion, municipio, zona) values(cliente_dpi, direccion, municipio, zona);
+    
+end;
+
+
+execute RegistrarDireccion(99677,'san miguel petapa','asdaf',4)
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------
+
+
+
+CrearOrden
+
+
+
+create procedure CrearOrden(cliente_dpi in number, id_direccion_entrada in integer, canal in char)
+as
+    existe_cliente varchar2(4000);
+    guardar_hora_inicio varchar2(4000);
+    tipo_estado varchar2(4000);
+    existe_direccion varchar2(4000);
+    guardar_zona varchar2(4000);
+    guardar_municipio varchar2(4000);
+    guardar_id_restaurante varchar2(4000);
+    existe_cobertura varchar2(4000);
+    dato_final_canal varchar2(4000);
+begin
+    select count(id_direccion) into existe_direccion from direcciones where id_direccion_entrada=id_direccion;
+    tipo_estado:='INICIADA';
+    select systimestamp into guardar_hora_inicio from dual;
+    select count(dpi) into existe_cliente from cliente where dpi=cliente_dpi;
+    if cliente_dpi is null or id_direccion_entrada is null or canal is null then
+        dbms_output.put_line('No pueden venir parametros vacios');
+        return;
+    end if;
+    if canal!='L' and canal!='A' then
+        dbms_output.put_line('Datos ingresados en canal invalidos');
+        return;
+    end if;
+    if canal='L' then
+        dato_final_canal:='llamada';
+    elsif canal='A' then
+        dato_final_canal:='aplicacion';
+    end if;
+    if existe_cliente <=0 then
+        dbms_output.put_line('El cliente no existe');
+        return;
+    elsif existe_direccion<=0  then
+        dbms_output.put_line('El id de la direccion ingresada no existe');
+        return;
+    elsif existe_direccion>0  then
+        select zona into guardar_zona from direcciones where id_direccion_entrada=id_direccion;
+        select municipio into guardar_municipio from direcciones where id_direccion_entrada=id_direccion;
+        select count(id_restaurante) into existe_cobertura from restaurante where guardar_zona=zona and guardar_municipio=municipio;
+        if  existe_cobertura<=0 then
+            tipo_estado:='SIN COBERTURA';
+            insert into orden (inicio_orden,fin_orden,estado,restaurante_id,cliente_dpi,id_direccion,canal,id_repartidor) values(guardar_hora_inicio,null,tipo_estado,null,cliente_dpi,id_direccion_entrada,canal,null);
+            dbms_output.put_line('Orden sin cobertura');
+            return;
+        elsif existe_cobertura>0 then
+            select id_restaurante into guardar_id_restaurante from restaurante where guardar_zona=zona and guardar_municipio=municipio;
+        end if;
+    end if;
+    
+    insert into orden (inicio_orden,fin_orden,estado,restaurante_id,cliente_dpi,id_direccion,canal,id_repartidor) values(guardar_hora_inicio,null,tipo_estado,guardar_id_restaurante,cliente_dpi,id_direccion_entrada,dato_final_canal,null);
+    
+end;
+
+
+
+
+------------------------------------------------------------------------------------------------
+
+
+
+
+
+AgregarItem
+
+
+
+create procedure AgregarItem(orden_id in integer, tipo_producto in char, producto in integer, cantidad in integer, observacion in varchar2)
+as
+dato_precio binary_double;
+existe_orden varchar2(4000);
+final_tipo_producto varchar2(4000);
+begin
+    select count(id_orden) into existe_orden from orden where id_orden=orden_id and estado='INICIADA';
+    if orden_id is null or tipo_producto is null or producto is null or cantidad is null or observacion is null then
+        dbms_output.put_line('No pueden venir campos vacios');
+        return;
+    end if;
+    if tipo_producto!='C' and tipo_producto!='E' and tipo_producto!='B' and tipo_producto!='P' then
+        dbms_output.put_line('Dominio restringido C,E,B,P');
+        return;
+    end if;
+    if existe_orden<=0 then
+        dbms_output.put_line('La orden no existe o su estado no es valido');
+        return;
+    end if;
+    if tipo_producto = 'C' and (producto>6 or producto<1 ) then
+        dbms_output.put_line('No existe el producto ingresado');
+        return;
+    elsif tipo_producto = 'E' and (producto>3 or producto<1 ) then
+        dbms_output.put_line('No existe el producto ingresado');
+        return;
+    end if;
+    if tipo_producto = 'B' and (producto>5 or producto<1 ) then
+        dbms_output.put_line('No existe el producto ingresado');
+        return;
+    elsif tipo_producto = 'P' and (producto>4 or producto<1 ) then
+        dbms_output.put_line('No existe el producto ingresado');
+        return;
+    end if;
+    if tipo_producto!='C' and tipo_producto!='E' and tipo_producto!='B' and tipo_producto!='P' then
+        dbms_output.put_line('No existe el tipo de producto ingresado');
+        return;
+    end if;
+    if existe_orden>0 then
+        update orden set estado='AGREGANDO' where id_orden=orden_id;
+    end if;
+    if tipo_producto='C' then
+        final_tipo_producto:='combo';
+        if producto=1 then
+            dato_precio:=41.00;
+        elsif producto=2 then
+            dato_precio:=32.00;
+        elsif producto=3 then
+            dato_precio:=54.00;
+        elsif producto=4 then
+            dato_precio:=47.00;
+        elsif producto=5 then
+            dato_precio:=85.00;
+        elsif producto=6 then
+            dato_precio:=36.00;
+        end if;
+    elsif tipo_producto='E' then
+        final_tipo_producto:='extra';
+        if producto=1 then
+            dato_precio:=15.00;
+        elsif producto=2 then
+            dato_precio:=17.00;
+        elsif producto=3 then
+            dato_precio:=12.00;
+        end if;
+    elsif tipo_producto='B' then
+        final_tipo_producto:='bebida';
+        if producto=1 then
+            dato_precio:=12.00;
+        elsif producto=2 then
+            dato_precio:=12.00;
+        elsif producto=3 then
+            dato_precio:=12.00;
+        elsif producto=4 then
+            dato_precio:=12.00;
+        elsif producto=5 then
+            dato_precio:=18.00;
+        end if;
+    elsif tipo_producto='P' then
+        final_tipo_producto:='postre';
+        if producto=1 then
+            dato_precio:=13.00;
+        elsif producto=2 then
+            dato_precio:=15.00;
+        elsif producto=3 then
+            dato_precio:=8.00;
+        elsif producto=4 then
+            dato_precio:=10.00;
+        end if;
+    end if;
+    
+    insert into item values(orden_id , final_tipo_producto , producto , cantidad , observacion ,dato_precio);
+    
+end;
+
+
+execute agregaritem(8,'B',5,2,null)
+
+
+----------------------------------------------------------------------------------------
+
+
+
+ConfirmarOrden
+
+
+create procedure ConfirmarOrden(id_orden_entrada in integer, forma_pago in char, id_repartidor_entrada in integer)
+as
+existe_orden varchar2(4000);
+existe_repartidor varchar2(4000);
+cuenta_total binary_double;
+monto_total binary_double;
+encontrar_id_direccion integer;
+encontrar_municipio varchar2(4000);
+guardar_hora timestamp;
+guardar_forma_pago varchar2(4000);
+encontrar_dpi number(19);
+guardar_nit varchar2(4000);
+begin
+    select count(id_orden) into existe_orden from orden where id_orden=id_orden_entrada and estado='AGREGANDO';
+    select count(id_empleado) into existe_repartidor from empleado where id_empleado=id_repartidor_entrada;
+    if id_orden_entrada is null or forma_pago is null or id_repartidor_entrada is null then
+        dbms_output.put_line('No pueden venir campos vacios');
+        return;
+    end if;
+    if existe_orden<=0 then
+        dbms_output.put_line('La orden no existe o su estado no es valido');
+        return;
+    elsif forma_pago!='E' and forma_pago!='T' then
+        dbms_output.put_line('Forma de pago no valida');
+        return;
+    end if;
+    if existe_repartidor<=0 then
+        dbms_output.put_line('No existe el repartidor');
+        return;
+    elsif existe_orden>0 then
+        update orden set estado='EN CAMINO', id_repartidor=id_repartidor_entrada where id_orden=id_orden_entrada;
+    end if;
+    if forma_pago='E' then
+        guardar_forma_pago:='efectivo';
+    elsif forma_pago='T' then
+        guardar_forma_pago:='tarjeta de debito o credito';
+    end if;
+    
+    select sum(total_precio) into cuenta_total from (select (cantidad*precio) as total_precio  from item where orden_id=id_orden_entrada);
+    monto_total:=cuenta_total+(cuenta_total*0.12);
+    
+    select id_direccion into encontrar_id_direccion from orden where id_orden=id_orden_entrada; 
+    select municipio into encontrar_municipio from direcciones where encontrar_id_direccion=id_direccion;
+    
+    select systimestamp into guardar_hora from dual;
+    
+    select cliente_dpi into encontrar_dpi from orden where id_orden=id_orden_entrada;
+    select nit into guardar_nit from cliente where dpi=encontrar_dpi;
+    if guardar_nit is null then
+        guardar_nit:='C/F';
+    end if;
+
+
+    insert into factura values(CONCAT(2023,id_orden_entrada),monto_total,encontrar_municipio,guardar_hora,id_orden_entrada,guardar_nit,guardar_forma_pago);
+    
+end;
+
+
+
+
+
+execute ConfirmarOrden(8,'E',00000001)
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+
+FinalizarOrden
+
+
+create procedure FinalizarOrden(id_orden_entrada in integer)
+as
+existe_orden varchar2(4000);
+guardar_hora_fin varchar2(4000);
+begin
+    select count(id_orden) into existe_orden from orden where id_orden=id_orden_entrada and estado='EN CAMINO';
+    if id_orden_entrada is null then
+        dbms_output.put_line('No puede tener campos vacios');
+        return;
+    end if;
+    if existe_orden<=0 then
+        dbms_output.put_line('La orden no existe o su estado no es valido');
+        return;
+    end if;
+    
+    select systimestamp into guardar_hora_fin from dual;
+    
+    update orden set estado='ENTREGADA', fin_orden=guardar_hora_fin where id_orden=id_orden_entrada;
+    
+end;
+
+
+execute finalizarorden(8);
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+
+ListarRestaurantes
+
+
+create procedure ListarRestaurantes
+as
+begin
+    for c in(Select id_restaurante, direccion, municipio, zona, telefono, personal, parqueo from restaurante) loop 
+        DBMS_OUTPUT.PUT_LINE('| ID: ' || c.id_restaurante || ' | DIRECCION: ' || c.direccion || ' | MUNICIPIO: ' || c.municipio || ' | ZONA: ' || c.zona || ' | TELEFONO: ' || c.telefono || ' | PERSONAL: ' || c.personal || ' | PARQUEO: ' || c.parqueo || ' | ');
+    end loop;
+        
+end;
+
+
+execute ListarRestaurantes;
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+ConsultarEmpleado
+
+
+create procedure ConsultarEmpleado(id_empleado_entrada in integer)
+as
+existe_empleado varchar2(4000);
+guardar_nombre_puesto varchar2(4000);
+guardar_id_puesto varchar2(4000);
+guardar_salario varchar2(4000);
+begin   
+    select count(id_empleado) into existe_empleado from empleado where id_empleado=id_empleado_entrada;
+    if existe_empleado<=0 then
+        dbms_output.put_line('Error, no existe empleado');
+        return;
+    end if;
+    
+    select  puesto_trabajo_id into guardar_id_puesto from empleado where id_empleado=id_empleado_entrada;
+    select nombre into guardar_nombre_puesto from puesto_trabajo where id_puesto_trabajo=guardar_id_puesto;
+    select salario into guardar_salario from puesto_trabajo where id_puesto_trabajo=guardar_id_puesto;
+    
+    for c in(Select id_empleado, nombres, apellidos, fecha_nacimiento,correo,telefono,direccion,dpi,puesto_trabajo_id,fecha_inicio,restaurante_id from empleado where id_empleado=id_empleado_entrada)loop
+        dbms_output.put_line('| Id: '||c.id_empleado||' | Nombre Completo: '||c.nombres||' '||c.apellidos||' | Fecha Nacimiento: '||c.fecha_nacimiento||' | Correo: '||c.correo||' | Telefono: '||c.telefono||' | Direccion: '||c.direccion||' | DPI: '||c.dpi||' | Puesto: '||guardar_nombre_puesto||' | Fecha inicio: '||c.fecha_inicio||' | Salario: '||guardar_salario);
+    end loop;
+    
+end;
+
+
+
+
+execute consultarempleado(1);
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+ConsultarPedidosCliente
+
+
+create procedure ConsultarPedidosCliente(id_orden_entrada in integer)
+as
+existe_orden varchar2(4000);
+begin   
+    
+    select count(id_orden) into existe_orden from orden where id_orden=id_orden_entrada;
+    
+    if existe_orden<=0 then
+        dbms_output.put_line('Error, no existe orden');
+        return;
+    end if;
+
+    for c in(select producto,tipo_producto,precio,cantidad,observacion from item where orden_id=id_orden_entrada)loop
+        dbms_output.put_line('| Producto: '||c.producto||' | Tipo producto: '||c.tipo_producto||' | Precio: '||c.precio||' | Cantidad: '||c.cantidad||' | Observacion: '||c.observacion);
+    end loop;
+     
+end;
+
+
+
+execute ConsultarPedidosCliente(8);
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+
+ConsultarHistorialOrdenes
+
+
+create procedure ConsultarHistorialOrdenes(dpi_cliente_entrada in integer)
+as
+existe_orden_cliente varchar2(4000);
+guardar_direccion_enviada varchar2(4000);
+guardar_monto varchar2(4000);
+guardar_fecha varchar2(4000);
+guardar_repartidor varchar2(4000);
+begin   
+    
+    select count(cliente_dpi) into existe_orden_cliente from orden where cliente_dpi=dpi_cliente_entrada and estado='ENTREGADA';
+    
+    if existe_orden_cliente<=0 then
+        dbms_output.put_line('Error, no existe ordenes para el cliente ingresado');
+        return;
+    end if;
+    
+    for c in(select id_orden,restaurante_id,id_repartidor,id_direccion,canal,inicio_orden,fin_orden from orden where cliente_dpi=dpi_cliente_entrada and estado='ENTREGADA')loop
+    
+        select direccion into guardar_direccion_enviada from direcciones where id_direccion=c.id_direccion;
+        select sum(total_precio) into guardar_monto from (select (cantidad*precio) as total_precio  from item where orden_id=c.id_orden);
+        select concat(nombres,apellidos) into guardar_repartidor from empleado where id_empleado=c.id_repartidor;
+        
+        dbms_output.put_line('| Id: '||c.id_orden||guardar_fecha||' | Monto: '||guardar_monto||' | Repartidor: '||guardar_repartidor||' | Direccion enviada: '||guardar_direccion_enviada||' | Canal: '||c.canal||' | Fecha inicio: '||c.inicio_orden||' | Fecha fin: '||c.fin_orden);
+        
+        for c2 in(select direccion,municipio,zona,telefono,id_restaurante from restaurante where id_restaurante=c.restaurante_id)loop
+            dbms_output.put_line('Datos del Restaurante');
+            dbms_output.put_line('| Direccion: '||c2.direccion||' | Municipio: '||c2.municipio||' | Zona: '||c2.zona||' | Telefono: '||c2.telefono);
+        end loop;
+
+        
+    end loop;
+
+     
+end;
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+ConsultarDirecciones
+
+
+
+create procedure ConsultarDirecciones(dpi_cliente_entrada in number)
+as
+existe_cliente varchar2(4000);
+begin   
+    
+    select count(dpi) into existe_cliente from cliente where dpi=dpi_cliente_entrada;
+    
+    if existe_cliente<=0 then
+        dbms_output.put_line('Error, no existe cliente');
+        return;
+    end if;
+    
+    for c in(select direccion,municipio,zona from direcciones where cliente_dpi=dpi_cliente_entrada)loop
+        dbms_output.put_line('| Direccion: '||c.direccion||' | Municipio: '||c.municipio||' | Zona: '||c.zona);
+    end loop;
+
+     
+end;
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+
+MostrarOrdenes
+
+
+create procedure MostrarOrdenes(estado_entrada in integer)
+as
+tipo_estado varchar2(4000);
+guardar_direccion_cliente varchar2(4000);
+begin   
+    
+    if estado_entrada=1 then
+        tipo_estado:='INICIADA';
+    elsif estado_entrada=2 then
+        tipo_estado:='AGREGANDO';
+    elsif estado_entrada=3 then
+        tipo_estado:='EN CAMINO';
+    elsif estado_entrada=4 then
+        tipo_estado:='ENTREGADA';
+    elsif estado_entrada=-1 then
+        tipo_estado:='SIN COBERTURA';
+    end if;
+    
+    
+    for c in(select id_orden,estado,inicio_orden,fin_orden,cliente_dpi,canal,id_direccion,restaurante_id from orden where estado=tipo_estado)loop
+    
+        select direccion into guardar_direccion_cliente from direcciones where id_direccion=c.id_direccion;
+        
+        dbms_output.put_line('| Id orden: '||c.id_orden||' | Estado: '||c.estado||' | Fecha inicio: '||c.inicio_orden||' | Fecha fin: '||c.fin_orden||' | DPI cliente: '||c.cliente_dpi||' | Direccion cliente: '||guardar_direccion_cliente||' | Canal: '||c.canal);
+        
+        for c2 in(select direccion,municipio,zona,telefono,id_restaurante from restaurante where id_restaurante=c.restaurante_id)loop
+            dbms_output.put_line('Datos del Restaurante');
+            dbms_output.put_line('| Direccion: '||c2.direccion||' | Municipio: '||c2.municipio||' | Zona: '||c2.zona||' | Telefono: '||c2.telefono);
+        end loop;
+        
+    end loop;
+
+     
+end;
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+
+ConsultarFacturas
+
+
+
+create procedure ConsultarFacturas(dia in integer, mes in integer, iyear in integer)
+as
+extrae_date varchar2(4000);
+guarda_dia varchar2(4000);
+guarda_mes varchar2(4000);
+guarda_year varchar2(4000);
+year_actual varchar2(4000);
+begin   
+    
+    for c in(select numero_serie,monto_total,lugar,fecha,orden_id,nit_cliente,forma_pago from factura)loop
+    
+        select to_char(trunc(c.fecha)) into extrae_date from dual;
+        
+        select to_char(to_date(extrae_date,'dd-mm-yy'),'DD') into guarda_dia from dual;
+        select to_char(to_date(extrae_date,'dd-mm-yy'),'MM') into guarda_mes from dual;
+        select to_char(to_date(extrae_date,'dd-mm-yy'),'YY') into guarda_year from dual;
+        
+        select substr(iyear,-2) into year_actual from dual;
+        
+        if dia=guarda_dia and mes=guarda_mes and year_actual=guarda_year then
+            dbms_output.put_line(' | Numero de serie: '||c.numero_serie||' | Monto total: '||c.monto_total||' | Lugar: '||c.lugar||' | Fecha: '||c.fecha||' | Id orden: '||c.orden_id||' | Nit: '||c.nit_cliente||' | Forma de pago: '||c.forma_pago);
+        end if;
+
+    end loop;
+    
+end;
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+
+Historial de transacciones
+
+
+create trigger tr_add_cliente
+after insert on cliente
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla Cliente','INSERT');
+    end;
+
+
+
+
+create trigger tr_update_cliente
+after update on cliente
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla Cliente','UPDATE');
+    end;
+
+
+
+create trigger tr_add_direccion
+after insert on direcciones
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla Direccion','INSERT');
+    end;
+
+
+
+create trigger tr_update_direccion
+after update on direcciones
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla Direccion','UPDATE');
+    end;
+
+
+create trigger tr_add_empleado
+after insert on empleado
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla EMPLEADO','INSERT');
+    end;
+
+
+
+create trigger tr_update_empleado
+after update on empleado
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla EMPLEADO','UPDATE');
+    end;
+
+
+create trigger tr_add_factura
+after insert on factura
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla FACTURA','INSERT');
+    end;
+
+create trigger tr_update_factura
+after update on factura
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla FACTURA','UPDATE');
+    end;
+
+create trigger tr_add_item
+after insert on item
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla ITEM','INSERT');
+    end;
+
+create trigger tr_update_item
+after update on item
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla ITEM','UPDATE');
+    end;
+
+create trigger tr_add_orden
+after insert on orden
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla ORDEN','INSERT');
+    end;
+
+create trigger tr_update_orden
+after update on orden
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla ORDEN','UPDATE');
+    end;
+
+create trigger tr_add_puesto
+after insert on puesto_trabajo
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla PUESTO_TRABAJO','INSERT');
+    end;
+
+create trigger tr_update_puesto
+after update on puesto_trabajo
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla PUESTO_TRABAJO','UPDATE');
+    end;
+
+
+create trigger tr_add_restaurante
+after insert on restaurante
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla RESTAURANTE','INSERT');
+    end;
+
+create trigger tr_update_restaurante
+after update on restaurante
+    begin
+        insert into bitacora values( (select systimestamp from dual),'Se ha realizado una accion en la tabla RESTAURANTE','UPDATE');
+    end;
+
+
+
+
+
+
+---------------------------------------------------------------------------------------------------------
+
+
