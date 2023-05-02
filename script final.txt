@@ -1,0 +1,111 @@
+
+
+CREATE TABLE cliente (
+    dpi              NUMBER(19) NOT NULL,
+    nombre           VARCHAR2(4000) NOT NULL,
+    apellido         VARCHAR2(4000) NOT NULL,
+    fecha_nacimiento VARCHAR2(4000) NOT NULL,
+    correo           VARCHAR2(4000) NOT NULL,
+    telefono         INTEGER NOT NULL,
+    nit              INTEGER
+);
+
+ALTER TABLE cliente ADD CONSTRAINT cliente_pk PRIMARY KEY ( dpi );
+
+CREATE TABLE direcciones (
+    id_direccion NUMBER GENERATED ALWAYS AS IDENTITY,
+    cliente_dpi  NUMBER(19) NOT NULL,
+    direccion    VARCHAR2(4000) NOT NULL,
+    municipio    VARCHAR2(4000) NOT NULL,
+    zona         INTEGER CHECK(zona>=0) NOT NULL
+);
+
+ALTER TABLE direcciones ADD CONSTRAINT direcciones_pk PRIMARY KEY ( id_direccion );
+
+
+
+CREATE SEQUENCE para_empleado
+START WITH 1
+INCREMENT BY 1;
+
+CREATE TABLE empleado (  
+    id_empleado       VARCHAR2(8) NOT NULL,
+    nombres           VARCHAR2(4000) NOT NULL,
+    apellidos         VARCHAR2(4000) NOT NULL,
+    fecha_nacimiento  VARCHAR2(4000) NOT NULL,
+    correo            VARCHAR2(4000) NOT NULL,
+    telefono          INTEGER NOT NULL,
+    direccion         VARCHAR2(4000) NOT NULL,
+    dpi               NUMBER(19) NOT NULL,
+    puesto_trabajo_id INTEGER NOT NULL,
+    fecha_inicio      VARCHAR2(4000) NOT NULL,
+    restaurante_id    VARCHAR2(4000) NOT NULL
+);
+
+ALTER TABLE empleado ADD CONSTRAINT empleado_pk PRIMARY KEY ( dpi );
+
+CREATE TABLE factura (
+    numero_serie varchar2(4000) NOT NULL,
+    monto_total  BINARY_DOUBLE NOT NULL,
+    lugar        VARCHAR2(4000) NOT NULL,
+    fecha        TIMESTAMP NOT NULL,
+    orden_id     INTEGER NOT NULL,
+    nit_cliente  VARCHAR2(4000),
+    forma_pago   VARCHAR2(4000) NOT NULL
+);
+
+ALTER TABLE factura ADD CONSTRAINT factura_pk PRIMARY KEY ( numero_serie );
+
+
+CREATE TABLE item (
+    orden_id      INTEGER NOT NULL,
+    tipo_producto VARCHAR2(4000) NOT NULL,
+    producto      INTEGER NOT NULL,
+    cantidad      INTEGER CHECK(cantidad>0) NOT NULL,
+    observacion   VARCHAR2(4000),
+    precio        BINARY_DOUBLE NOT NULL
+);
+
+
+
+CREATE TABLE orden (
+    id_orden       NUMBER GENERATED ALWAYS AS IDENTITY,
+    inicio_orden   VARCHAR2(4000),
+    fin_orden      VARCHAR2(4000),
+    estado         VARCHAR2(4000) NOT NULL,
+    restaurante_id VARCHAR2(4000) ,
+    cliente_dpi    NUMBER(19) NOT NULL,
+    id_direccion   INTEGER NOT NULL,
+    canal          VARCHAR2(4000) NOT NULL,
+    id_repartidor  INTEGER
+);
+
+ALTER TABLE orden ADD CONSTRAINT orden_pk PRIMARY KEY ( id_orden );
+
+CREATE TABLE puesto_trabajo (
+    id_puesto_trabajo NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre            VARCHAR2(4000) NOT NULL,
+    descripcion       VARCHAR2(4000) NOT NULL,
+    salario           BINARY_DOUBLE CHECK (salario>=0) NOT NULL
+);
+
+ALTER TABLE puesto_trabajo ADD CONSTRAINT puesto_trabajo_pk PRIMARY KEY ( id_puesto_trabajo );
+
+CREATE TABLE restaurante (
+    id_restaurante VARCHAR2(4000) NOT NULL,
+    direccion      VARCHAR2(4000) NOT NULL,
+    municipio      VARCHAR2(4000) NOT NULL,
+    zona           INTEGER NOT NULL,
+    telefono       INTEGER NOT NULL,
+    personal       INTEGER NOT NULL,
+    parqueo        VARCHAR2(4000) NOT NULL
+);
+
+ALTER TABLE restaurante ADD CONSTRAINT restaurante_pk PRIMARY KEY ( id_restaurante );
+
+
+CREATE TABLE bitacora(
+    fecha VARCHAR2(4000),
+    descripcion VARCHAR2(4000),
+    tipo VARCHAR2(4000)
+);
